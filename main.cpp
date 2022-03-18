@@ -11,17 +11,63 @@ struct item
     int value;
 };
 
-struct bag
+struct Bag
 {
     int id;
-    int weight;
-    int value;
-    vector<int> items;
+    int weight = 0;
+    int value = 0;
+    vector<item> items;
 };
 
-bool compare_items(bag b1, bag b2)
+struct method
+{
+    // 1 - Heuristica; 2 - Aleatorizacao; 3 - Busca Local; 4 - Busca Exaustiva
+    int id;
+    Bag bag;
+};
+
+struct Cursor
+{
+    vector<item> items;
+    int max_items;
+    int max_weight;
+    default_random_engine generator;
+    uniform_real_distribution<double> distribution;
+};
+
+Cursor init_items()
+{
+    Cursor cursor;
+    vector<item> items;
+
+    int max_items, max_weight;
+
+    cin >> max_items >> max_weight;
+    
+    for (int i=0; i<max_items; i++)
+    {
+        item temp;
+        cin >> temp.weight >> temp.value;
+        temp.id = i;
+        items.push_back(temp);
+    }
+
+    cursor.max_items = max_items;
+    cursor.max_weight = max_weight;
+    cursor.items = items;
+
+    return cursor;
+
+}
+
+bool compare_items(Bag b1, Bag b2)
 {
     return (b1.value > b2.value);
+}
+
+bool compare_weight(item a, item b)
+{
+    return (a.weight < b.weight);
 }
 
 int exhaustive_search(int W, vector<item> items, int position)
@@ -48,26 +94,99 @@ int exhaustive_search(int W, vector<item> items, int position)
     }
 }
 
-int main ()
+int local_search(Cursor cursor, int h)
 {
-    vector<item> items;
-    vector<bag> bags;
-    int max_items, max_weight;
+    Bag bag;
+    Bag better_bag;
+    vector<item> items = cursor.items;
+    int weight;
+    int value;
+    int bag_value;
+    int bag_better_value;
 
-    cin >> max_items >> max_weight;
-    bags.reserve(max_items);
-    
-    for (int i=0; i<max_items; i++)
+    for (int i=0; i < h; i++)
     {
-        item temp;
-        cin >> temp.weight >> temp.value;
-        temp.id = i;
-        items.push_back(temp);
+        bag.items.clear();
+        for (auto& el:items)
+        {
+            double prob = cursor.distribution(cursor.generator);
+            if (el.weight + weight <= cursor.max_weight and prob <=0.5)
+            {
+                bag.items.push_back(el);
+                weight += el.weight;
+                value += el.value;
+            }
+            bag_value += bag.items[i].value;
+        }
+
+        sort(bag.items.begin(), bag.items.end(), compare_weight);
+
+        if (bag_value > bag_better_value)
+        {
+            better_bag = bag;
+        }
+
+        weight = 0;
+        value = 0;
+        bag_value = 0;
+        bag.items.clear();
     }
 
-    int _exhaustive_search = exhaustive_search(max_weight, items, 0);
+    int beter_bag_sum = 0;
+    for (auto& el: better_bag.items)
+    {
+        beter_bag_sum += better_bag.value;
+    }
 
-    cout << _exhaustive_search << endl; 
+
+    return beter_bag_sum;
+}
+
+int heuristic(Cursor cursor)
+{
+    Bag bag;
+    vector<item> items = cursor.items;default_random_engine generator(10);
+    uniform_real_distribution<double> distribution(0.0, 1.0);
+    sort(items.begin(), items.end(), compare_weight);
+    for (auto& el : items)
+    {
+        if (el.weight + bag.weight <= cursor.max_weight)
+        {
+            bag.items.push_back(el);
+            bag.weight += el.weight;
+            bag.value += el.value;
+        }
+    }
+
+    sort(bag.items.begin(), bag.items.end(), [](auto& i, auto&j){return i.id < j.id;});
+
+    return bag.value;
+}
+
+int randomization()
+{
+
+    return 0;
+}
+
+int main ()
+{
+    Cursor cursor;
+    vector<Bag> bags;
+    default_random_engine generator(10);
+    cursor.generator = generator;
+    uniform_real_distribution<double> distribution(0.0, 1.0);
+    cursor.distribution = distribution;
+    
+    cursor = init_items();
+
+    int _exhaustive_search = exhaustive_search(cursor.max_weight, cursor.items, 0);
+    int _heuristic = heuristic(cursor);
+    int _local_search = local_search(cursor, 1000);
+
+    cout << "Heuristic:" << _heuristic << endl;
+    cout << "Exhaustive Search:" <<_exhaustive_search << endl;
+    cout << "Busca Local: " << _local_search << endl;
 
     return 0;
 }
